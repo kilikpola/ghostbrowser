@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="Search">
+        <ListPreference android:key="search_engine" android:title="Search engine"
+            android:entries="@array/engine_names" android:entryValues="@array/engine_values"
+            android:defaultValue="https://duckduckgo.com/?q=%s" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Look &amp; feel">
+        <ListPreference android:key="accent" android:title="Accent colour"
+            android:entries="@array/accent_names" android:entryValues="@array/accent_values"
+            android:defaultValue="#5B5BD6" />
+        <CheckBoxPreference android:key="dark_pages" android:title="Dark websites"
+            android:summary="Recolours light pages to match the browser. Pages that are already dark are left alone."
+            android:defaultValue="true" />
+        <CheckBoxPreference android:key="toolbar_bottom" android:title="Toolbar at bottom"
+            android:summary="Easier to reach one-handed" android:defaultValue="false" />
+        <ListPreference android:key="text_zoom" android:title="Text size"
+            android:entries="@array/zoom_names" android:entryValues="@array/zoom_values"
+            android:defaultValue="100" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Privacy">
+        <CheckBoxPreference android:key="block_trackers" android:title="Block trackers &amp; ads"
+            android:summary="Built-in blocklist of ad and analytics domains" android:defaultValue="true" />
+        <CheckBoxPreference android:key="block_3p_cookies" android:title="Block third-party cookies"
+            android:summary="Android 5.0 and above" android:defaultValue="true" />
+        <CheckBoxPreference android:key="send_dnt" android:title="Send Do Not Track / GPC"
+            android:defaultValue="true" />
+        <CheckBoxPreference android:key="https_only" android:title="HTTPS-only mode"
+            android:summary="Upgrade http:// links to https://" android:defaultValue="false" />
+        <CheckBoxPreference android:key="javascript" android:title="JavaScript"
+            android:defaultValue="true" />
+        <CheckBoxPreference android:key="save_history" android:title="Save history"
+            android:defaultValue="true" />
+        <CheckBoxPreference android:key="clear_on_exit" android:title="Clear data when quitting"
+            android:summary="Cookies, cache, history and site storage" android:defaultValue="false" />
+        <Preference android:key="clear_now" android:title="Clear browsing data now" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Compatibility">
+        <CheckBoxPreference android:key="compat_mode" android:title="Compatibility mode"
+            android:summary="Rewrites modern page styles for this device's older engine and reveals content that waits for scripts it can't run"
+            android:defaultValue="true" />
+        <CheckBoxPreference android:key="modern_js" android:title="Run modern JavaScript"
+            android:summary="Translates newer JavaScript so sites built for recent browsers work. Android 5+ with an older WebView; the first visit to a site is slower."
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Developer">
+        <CheckBoxPreference android:key="web_debugging" android:title="Debug pages over USB"
+            android:summary="Lets a computer inspect pages via adb (Android 4.4+). Restart the app to apply."
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="About">
+        <Preference android:key="about" android:title="Ghostbrowser" />
+    </PreferenceCategory>
+</PreferenceScreen>

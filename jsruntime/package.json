@@ -1,0 +1,22 @@
+{
+  "name": "ghostbrowser-jsruntime",
+  "private": true,
+  "description": "Builds assets/esm.js: lets old WebViews (Chrome 61+) run modern module-based sites.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/unit.mjs unit && node test/tlatest.mjs /tmp/ghost-tla-test"
+  },
+  "dependencies": {
+    "@babel/standalone": "8.1.1",
+    "@juggle/resize-observer": "3.4.0",
+    "abortcontroller-polyfill": "1.7.8",
+    "core-js": "3.51.0",
+    "es-module-shims": "1.10.1",
+    "esbuild": "0.28.2",
+    "sucrase": "3.35.1"
+  },
+  "devDependencies": {
+    "acorn": "8.19.0"
+  },
+  "type": "module"
+}

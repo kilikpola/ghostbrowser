@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="engine_names">
+        <item>DuckDuckGo</item>
+        <item>DuckDuckGo Lite (best for old devices)</item>
+        <item>Startpage</item>
+        <item>Brave Search</item>
+        <item>Ecosia</item>
+        <item>Google</item>
+        <item>Bing</item>
+    </string-array>
+    <string-array name="engine_values">
+        <item>https://duckduckgo.com/?q=%s</item>
+        <item>https://lite.duckduckgo.com/lite/?q=%s</item>
+        <item>https://www.startpage.com/do/search?q=%s</item>
+        <item>https://search.brave.com/search?q=%s</item>
+        <item>https://www.ecosia.org/search?q=%s</item>
+        <item>https://www.google.com/search?q=%s</item>
+        <item>https://www.bing.com/search?q=%s</item>
+    </string-array>
+    <string-array name="accent_names">
+        <item>Indigo</item>
+        <item>Teal</item>
+        <item>Rose</item>
+        <item>Amber</item>
+        <item>Ocean</item>
+        <item>Violet</item>
+        <item>Graphite</item>
+    </string-array>
+    <string-array name="accent_values">
+        <item>#5B5BD6</item>
+        <item>#0E9384</item>
+        <item>#E5484D</item>
+        <item>#D97706</item>
+        <item>#0B6BCB</item>
+        <item>#8E4EC6</item>
+        <item>#3F3F46</item>
+    </string-array>
+    <string-array name="zoom_names">
+        <item>75%</item>
+        <item>90%</item>
+        <item>100%</item>
+        <item>115%</item>
+        <item>130%</item>
+        <item>150%</item>
+    </string-array>
+    <string-array name="zoom_values">
+        <item>75</item>
+        <item>90</item>
+        <item>100</item>
+        <item>115</item>
+        <item>130</item>
+        <item>150</item>
+    </string-array>
+</resources>

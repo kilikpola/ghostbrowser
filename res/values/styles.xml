@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ghostbrowser is dark-only. Android 4.x uses Holo; 5.0+ overrides in values-v21. -->
+    <style name="AppTheme" parent="@android:style/Theme.Holo.NoActionBar">
+        <item name="android:windowBackground">@color/ghost_bg</item>
+        <item name="android:popupMenuStyle">@style/GhostPopupMenu</item>
+    </style>
+    <style name="GhostPopupMenu" parent="@android:style/Widget.Holo.PopupMenu">
+        <item name="android:popupBackground">@drawable/ghost_popup_bg</item>
+    </style>
+    <style name="SettingsTheme" parent="@android:style/Theme.Holo">
+        <item name="android:windowBackground">@color/ghost_bg</item>
+    </style>
+</resources>

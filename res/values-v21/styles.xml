@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ghostbrowser is dark-only: Helium-style neutrals, rounded menus and dialogs. -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ghost_bg</item>
+        <item name="android:colorAccent">@color/ghost_accent</item>
+        <item name="android:colorControlHighlight">#1AFFFFFF</item>
+        <item name="android:popupMenuStyle">@style/GhostPopupMenu</item>
+        <item name="android:alertDialogTheme">@style/GhostDialog</item>
+    </style>
+    <style name="GhostPopupMenu" parent="@android:style/Widget.Material.PopupMenu">
+        <item name="android:popupBackground">@drawable/ghost_popup_bg</item>
+        <item name="android:popupElevation">12dp</item>
+    </style>
+    <style name="GhostDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/ghost_dialog_bg</item>
+        <item name="android:colorAccent">@color/ghost_accent</item>
+        <item name="android:textColorPrimary">@color/ghost_text</item>
+        <item name="android:textColorSecondary">@color/ghost_text_secondary</item>
+    </style>
+    <style name="SettingsTheme" parent="@android:style/Theme.Material">
+        <item name="android:windowBackground">@color/ghost_bg</item>
+        <item name="android:colorPrimary">@color/ghost_bg</item>
+        <item name="android:colorPrimaryDark">@color/ghost_bg</item>
+        <item name="android:navigationBarColor">@color/ghost_bg</item>
+        <item name="android:colorAccent">@color/ghost_accent</item>
+        <item name="android:colorControlHighlight">#1AFFFFFF</item>
+        <item name="android:alertDialogTheme">@style/GhostDialog</item>
+    </style>
+</resources>
