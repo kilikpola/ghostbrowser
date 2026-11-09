@@ -19,6 +19,10 @@ final class Tab {
     int compatStage;
     volatile String ua;
     volatile String host;
+    /** When the page was last touched, so a page can't open other apps without a tap. */
+    long lastTouch;
+    /** The current navigation was started by Ghostbrowser (address bar, reload, back/forward). */
+    volatile boolean appNav;
     final AtomicInteger blocked = new AtomicInteger();
 
     Tab(String url, boolean incognito) {

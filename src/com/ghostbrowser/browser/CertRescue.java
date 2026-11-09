@@ -187,7 +187,8 @@ final class CertRescue {
             if (type == 7 && name.equals(h)) return true; // IP address
             if (type != 2) continue;                      // DNS name
             if (name.equals(h)) return true;
-            if (name.startsWith("*.")) {
+            // "*.example.com" covers one label; never "*.com"-style wildcards or IP addresses.
+            if (name.startsWith("*.") && name.indexOf('.', 2) > 0 && !h.matches("[0-9.]+|.*:.*")) {
                 int dot = h.indexOf('.');
                 if (dot > 0 && h.substring(dot).equals(name.substring(1))) return true;
             }

@@ -169,6 +169,7 @@ public class MainActivity extends Activity {
         for (Tab t : allTabs()) if (t.web != null) applySettings(t);
         if (focused != null && focused.web != null) focused.web.resumeTimers();
         resumeVisible();
+        updateCookiePolicy();
     }
 
     @Override protected void onDestroy() {
@@ -206,6 +207,7 @@ public class MainActivity extends Activity {
         } else if (findBar.getVisibility() == View.VISIBLE) {
             closeFind();
         } else if (focused != null && focused.web != null && focused.web.canGoBack()) {
+            focused.appNav = true;
             focused.web.goBack();
         } else if (focused != null && focused.parent != null && ws.tabs.contains(focused.parent)) {
             Tab parent = focused.parent;
@@ -726,6 +728,7 @@ public class MainActivity extends Activity {
         }
         if (ws.secondary != null && focused == ws.secondary) ws.secondary = t; else ws.primary = t;
         focused = t;
+        updateCookiePolicy();
         showWorkspace();
     }
 
@@ -830,7 +833,17 @@ public class MainActivity extends Activity {
         refreshChrome();
     }
 
+    /**
+     * WebView keeps one cookie jar for every tab, so private tabs can't have a separate one.
+     * Instead cookies are switched off while a private tab is in front: it neither sees the
+     * normal tabs' logins nor leaves cookies behind.
+     */
+    void updateCookiePolicy() {
+        CookieManager.getInstance().setAcceptCookie(focused == null || !focused.incognito);
+    }
+
     void refreshChrome() {
+        updateCookiePolicy();
         if (ws == null || focused == null) return;
         boolean split = ws.secondary != null;
         tintChrome();
@@ -1069,6 +1082,17 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Like {@link #toUrl} but never another scheme: anything that isn't http(s) becomes a search. */
+    String webUrl(String input) {
+        String u = toUrl(input);
+        if (u.startsWith("http://") || u.startsWith("https://")) return u;
+        try {
+            return store.searchTemplate().replace("%s", URLEncoder.encode(input.trim(), "UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            return START;
+        }
+    }
+
     void navigate(String input) {
         if (input.trim().length() == 0) return;
         loadInto(focused, toUrl(input));
@@ -1078,6 +1102,8 @@ public class MainActivity extends Activity {
     }
 
     void loadInto(Tab t, String url) {
+        if (t.incognito) CookieManager.getInstance().setAcceptCookie(false);
+        t.appNav = true;
         t.url = url;
         t.host = TrackerBlocker.host(url);
         if (t.web == null) return;
@@ -1095,7 +1121,10 @@ public class MainActivity extends Activity {
         if (i == null || i.getAction() == null) return;
         String a = i.getAction();
         if (Intent.ACTION_VIEW.equals(a) && i.getDataString() != null) {
-            newTab(i.getDataString(), false, null, true);
+            // Other apps may only open web pages: a file: page could read this app's private
+            // files (cookies) on Android 4.0, where file pages have universal access.
+            String d = i.getDataString();
+            if (d.startsWith("http://") || d.startsWith("https://")) newTab(d, false, null, true);
         } else if (Intent.ACTION_WEB_SEARCH.equals(a)) {
             String q = i.getStringExtra(SearchManager.QUERY);
             if (q != null) newTab(toUrl(q), false, null, true);
@@ -1121,7 +1150,8 @@ public class MainActivity extends Activity {
         // Base colour for pages that paint no background, so dark mode never starts on a white flash.
         t.web.setBackgroundColor(darkPages(t) ? CARD_BG : Color.WHITE);
         if (Build.VERSION.SDK_INT >= 21) {
-            CookieManager.getInstance().setAcceptThirdPartyCookies(t.web, !store.flag("block_3p_cookies", true));
+            CookieManager.getInstance().setAcceptThirdPartyCookies(t.web,
+                    !t.incognito && !store.flag("block_3p_cookies", true));
         }
     }
 
@@ -1129,7 +1159,7 @@ public class MainActivity extends Activity {
     WebView createWebView(final Tab t) {
         final WebView w = new WebView(this);
         WebSettings s = w.getSettings();
-        s.setDomStorageEnabled(true);
+        s.setDomStorageEnabled(!t.incognito); // site storage is shared by all tabs, so private tabs get none
         s.setSupportZoom(true);
         s.setBuiltInZoomControls(true);
         s.setDisplayZoomControls(false);
@@ -1141,7 +1171,6 @@ public class MainActivity extends Activity {
         s.setSavePassword(false);
         s.setSaveFormData(!t.incognito);
         if (t.incognito) s.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        CookieManager.getInstance().setAcceptCookie(true);
         t.web = w;
         applySettings(t);
 
@@ -1149,12 +1178,13 @@ public class MainActivity extends Activity {
         w.setWebChromeClient(new Chrome(t));
         w.setDownloadListener(new DownloadListener() {
             @Override public void onDownloadStart(String url, String ua, String cd, String mime, long len) {
-                startDownload(url, ua, cd, mime);
+                confirmDownload(url, ua, cd, mime, len);
             }
         });
         w.setOnTouchListener(new View.OnTouchListener() {
             @Override public boolean onTouch(View v, MotionEvent e) {
                 if (e.getAction() == MotionEvent.ACTION_DOWN) {
+                    t.lastTouch = android.os.SystemClock.uptimeMillis();
                     if (urlBar.hasFocus()) urlBar.clearFocus();
                     if (focused != t && ws.secondary != null) setFocused(t);
                 }
@@ -1172,9 +1202,11 @@ public class MainActivity extends Activity {
         Client(Tab t) { this.t = t; }
 
         @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (url.startsWith("ghost://search")) {
+            if (url.startsWith("ghost:")) {
+                // Only the start page may search this way, and only to a web address: anything
+                // else would let a page (or a frame inside one) run javascript: or open file: URLs.
                 String q = Uri.parse(url).getQueryParameter("q");
-                if (q != null) loadInto(t, toUrl(q));
+                if (q != null && START.equals(view.getUrl())) loadInto(t, webUrl(q));
                 return true;
             }
             if (url.startsWith("http://") && store.flag("https_only", false)) {
@@ -1186,13 +1218,34 @@ public class MainActivity extends Activity {
                 t.host = TrackerBlocker.host(url);
                 return false;
             }
-            // mailto:, tel:, market:, intent: … hand off to other apps
+            // mailto:, tel:, market:, intent: … hand off to other apps, but only right after a tap;
+            // otherwise ask, so a page can't open apps on its own.
+            if (android.os.SystemClock.uptimeMillis() - t.lastTouch > 5000) {
+                final String target = url;
+                String scheme = url.indexOf(':') > 0 ? url.substring(0, url.indexOf(':')) : url;
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Open another app?")
+                        .setMessage((t.host != null ? t.host : "This page") + " wants to open a " + scheme + ": link in another app.")
+                        .setPositiveButton("Open", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) { openExternal(t, target); }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                return true;
+            }
+            openExternal(t, url);
+            return true;
+        }
+
+        void openExternal(Tab t, String url) {
             try {
                 Intent i = url.startsWith("intent:")
                         ? Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
                         : new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 i.addCategory(Intent.CATEGORY_BROWSABLE);
                 i.setComponent(null);
+                // A selector would bypass the BROWSABLE restriction; selectors arrived in API 15.
+                if (Build.VERSION.SDK_INT >= 15) i.setSelector(null);
                 try {
                     startActivity(i);
                 } catch (ActivityNotFoundException e) {
@@ -1203,10 +1256,10 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 Toast.makeText(MainActivity.this, "Can't open link", Toast.LENGTH_SHORT).show();
             }
-            return true;
         }
 
         @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            t.appNav = false; // the navigation's requests (and redirects) are done by now
             t.url = url;
             t.host = TrackerBlocker.host(url);
             t.blocked.set(0);
@@ -1235,7 +1288,7 @@ public class MainActivity extends Activity {
             if (ModernJs.engineNeedsIt()) {
                 String file = ModernJs.runtimeFile(req);
                 if (file != null) return ModernJs.runtime(getApplicationContext(), file);
-                if (req.isForMainFrame() && "GET".equals(req.getMethod()) && modernJs(t)) {
+                if (req.isForMainFrame() && "GET".equals(req.getMethod()) && modernJs(t) && mayFetchPage(t, req)) {
                     String u = req.getUrl().toString();
                     if (u.startsWith("http")) {
                         Map<String, String> extra = new HashMap<String, String>();
@@ -1249,6 +1302,29 @@ public class MainActivity extends Activity {
                 }
             }
             return shouldInterceptRequest(view, req.getUrl().toString());
+        }
+
+        /**
+         * Ghostbrowser sends every cookie when it fetches a page itself, including SameSite=Strict
+         * ones a cross-site navigation must not carry. So it only does that for navigations the
+         * person started (address bar, reload, back/forward, a tap on a link) or same-host ones;
+         * anything else loads normally, with the WebView's own cookie rules.
+         */
+        @android.annotation.TargetApi(21)
+        boolean mayFetchPage(Tab t, WebResourceRequest req) {
+            if (t.appNav || req.hasGesture()) return true;
+            String ref = null;
+            for (Map.Entry<String, String> e : req.getRequestHeaders().entrySet()) {
+                if ("Referer".equalsIgnoreCase(e.getKey())) ref = e.getValue();
+            }
+            if (ref == null) return false;
+            String target = TrackerBlocker.host(req.getUrl().toString());
+            String from = TrackerBlocker.host(ref);
+            if (target == null || from == null) return false;
+            // Same host or one inside the other; site() is too loose here (it groups all of co.uk).
+            target = target.toLowerCase(java.util.Locale.US);
+            from = from.toLowerCase(java.util.Locale.US);
+            return target.equals(from) || target.endsWith("." + from) || from.endsWith("." + target);
         }
 
         @Override public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
@@ -1488,6 +1564,20 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ downloads
 
+    /** Pages can start downloads on their own, so ask before saving anything. */
+    void confirmDownload(final String url, final String ua, final String disposition, final String mime, long len) {
+        String name = URLUtil.guessFileName(url, disposition, mime);
+        String size = len > 0 ? android.text.format.Formatter.formatShortFileSize(this, len) + " · " : "";
+        new AlertDialog.Builder(this)
+                .setTitle("Download file?")
+                .setMessage(name + "\n" + size + TrackerBlocker.host(url))
+                .setPositiveButton("Download", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int w) { startDownload(url, ua, disposition, mime); }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     void startDownload(String url, String ua, String disposition, String mime) {
         if (url == null || !url.startsWith("http")) {
             Toast.makeText(this, "This download type isn't supported", Toast.LENGTH_SHORT).show();
@@ -1572,8 +1662,8 @@ public class MainActivity extends Activity {
         WebView w = focused.web;
         String url = currentUrl(focused);
         switch (id) {
-            case M_BACK: if (w != null) w.goBack(); return true;
-            case M_FORWARD: if (w != null) w.goForward(); return true;
+            case M_BACK: if (w != null) { focused.appNav = true; w.goBack(); } return true;
+            case M_FORWARD: if (w != null) { focused.appNav = true; w.goForward(); } return true;
             case M_COMPAT:
                 focused.compatOff = !focused.compatOff;
                 if (w != null) w.reload();
@@ -1587,7 +1677,12 @@ public class MainActivity extends Activity {
                 return true;
             case M_RELOAD:
                 if (w == null) return true;
-                if (focused.progress < 100) w.stopLoading(); else w.reload();
+                if (focused.progress < 100) {
+                    w.stopLoading();
+                } else {
+                    focused.appNav = true;
+                    w.reload();
+                }
                 return true;
             case M_NEW: newTab(START, false, null, true); focusUrlBar(); return true;
             case M_PRIVATE:
@@ -1853,9 +1948,10 @@ public class MainActivity extends Activity {
                     java.net.URL u = new java.net.URL(href);
                     String proto = u.getProtocol();
                     if (!"http".equals(proto) && !"https".equals(proto)) throw new java.io.IOException("scheme");
+                    // Android caches DNS answers for 2 s, so the connection below reuses these
+                    // checked addresses; a rebinding DNS server can't swap in a local one between.
                     for (java.net.InetAddress a : java.net.InetAddress.getAllByName(u.getHost())) {
-                        if (a.isLoopbackAddress() || a.isSiteLocalAddress() || a.isLinkLocalAddress()
-                                || a.isAnyLocalAddress() || a.isMulticastAddress()) throw new java.io.IOException("private address");
+                        if (!isPublicAddress(a)) throw new java.io.IOException("private address");
                     }
                     java.net.HttpURLConnection c = (java.net.HttpURLConnection) u.openConnection();
                     c.setInstanceFollowRedirects(false);
@@ -1888,6 +1984,20 @@ public class MainActivity extends Activity {
                 });
             }
         }, "compat-css").start();
+    }
+
+    static boolean isPublicAddress(java.net.InetAddress a) {
+        if (a.isLoopbackAddress() || a.isSiteLocalAddress() || a.isLinkLocalAddress()
+                || a.isAnyLocalAddress() || a.isMulticastAddress()) return false;
+        byte[] b = a.getAddress();
+        if (b.length == 4) {
+            if (b[0] == 0) return false;                                // 0.0.0.0/8
+            if (b[0] == 100 && (b[1] & 0xC0) == 64) return false;       // 100.64.0.0/10 carrier NAT
+            if ((b[0] & 0xFF) == 198 && (b[1] & 0xFE) == 18) return false; // 198.18.0.0/15
+        } else if ((b[0] & 0xFE) == 0xFC) {
+            return false;                                               // fc00::/7 unique local
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------ helpers

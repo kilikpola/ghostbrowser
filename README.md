@@ -102,4 +102,8 @@ signed with the same key.
 Ghostbrowser renders with the system WebView, not Gecko or a bundled Chromium (neither runs on
 Android 4.0). On Android 4.0–4.3 the WebView is the old pre-Chromium engine, and 4.0 has no
 TLS 1.2, so many modern sites will load badly or not at all there. 4.4 and newer work much
-better. Private tabs keep no history or session, but WebView cookies are shared app-wide.
+better. WebView has one cookie jar for the whole app, so private tabs can't get their own:
+instead cookies are switched off while a private tab is in front (it can't see your logins or
+leave cookies behind, but sites that need a login won't work there), and private tabs get no
+site storage. Normal tabs in the background also go without cookies while a private tab is in
+front.
